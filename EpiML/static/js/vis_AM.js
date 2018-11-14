@@ -1,4 +1,4 @@
-var am_margin = {top: 80, right: 0, bottom: 10, left: 80},
+var am_margin = {top: 180, right: 0, bottom: 10, left: 180},
     am_width = parseInt(d3.select('#vis_am').style('width')),
     am_height = am_width,
     am_legend_width = 80,
@@ -18,8 +18,8 @@ var am_svg = d3.select("#adjacency_matrix")
     .attr("transform", "translate(" + am_margin.left + "," + am_margin.top + ")");
 
 var am_nodes;
-
-d3.json(am_graph_json, function (am_graph) {
+am_graph=JSON.parse(am_graph_json);
+function draw_am (am_graph) {
     var am_matrix = [];
     am_nodes = am_graph.nodes;
     n = am_nodes.length;
@@ -242,7 +242,8 @@ d3.json(am_graph_json, function (am_graph) {
                 return "translate(" + x(i) + ")rotate(-90)";
             });
     }
-});
+};
+draw_am(am_graph);
 
 // Set-up the export button for circle_network
 d3.select('#am_saveAsPNG').on('click', function () {
