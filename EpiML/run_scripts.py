@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from EpiML import app, db, celery
 from EpiML.db_tables import Job
+from EpiML.email import send_job_done_email
 
 
 def create_job_folder(upload_folder='', jobid=None, security_code=None):
@@ -25,7 +26,7 @@ def create_job_folder(upload_folder='', jobid=None, security_code=None):
 
 
 @celery.task()
-def call_scripts(jobid, method, params=None, x_filename='', y_filename='', jobcategory=''):
+def call_scripts(jobid, method, params=None, x_filename='', y_filename=''):
     print('Background start {}...'.format(method))
     job = Job.query.filter_by(id=jobid).first_or_404()
     job.status = 'Running'
@@ -39,11 +40,12 @@ def call_scripts(jobid, method, params=None, x_filename='', y_filename='', jobca
         try:
             with open(os.path.join(job_dir, 'EBEN.stdout'), 'w') as EBEN_stdout, \
                     open(os.path.join(job_dir, 'EBEN.stderr'), 'w') as EBEN_stderr:
-                subprocess.run(['Rscript', app.config['EBEN_SCRIPT'], job_dir, x_filename, y_filename, jobcategory,
-                                params['fold_number'], params['seed_number']],
+                subprocess.run(['Rscript', app.config['EBEN_SCRIPT'], job_dir, x_filename, y_filename,
+                                params['datatype'], params['fold_number'], params['seed_number']],
                                stdout=EBEN_stdout, stderr=EBEN_stderr)
                 job.status = 'Done'
-        except:
+        except Exception as ex:
+            print(ex)
             job.status = 'Error'
 
     if method == 'LASSO':
@@ -51,11 +53,12 @@ def call_scripts(jobid, method, params=None, x_filename='', y_filename='', jobca
         try:
             with open(os.path.join(job_dir, 'LASSO.stdout'), 'w') as LASSO_stdout, \
                     open(os.path.join(job_dir, 'LASSO.stderr'), 'w') as LASSO_stderr:
-                subprocess.run(['Rscript', app.config['LASSO_SCRIPT'], job_dir, x_filename, y_filename, jobcategory,
-                                params['fold_number'], params['seed_number']],
+                subprocess.run(['Rscript', app.config['LASSO_SCRIPT'], job_dir, x_filename, y_filename,
+                                params['datatype'], params['fold_number'], params['seed_number']],
                                stdout=LASSO_stdout, stderr=LASSO_stderr)
                 job.status = 'Done'
-        except:
+        except Exception as ex:
+            print(ex)
             job.status = 'Error'
 
     if method == 'ssLASSO':
@@ -63,11 +66,12 @@ def call_scripts(jobid, method, params=None, x_filename='', y_filename='', jobca
         try:
             with open(os.path.join(job_dir, 'ssLASSO.stdout'), 'w') as SSLASSO_stdout, \
                     open(os.path.join(job_dir, 'ssLASSO.stderr'), 'w') as SSLASSO_stderr:
-                subprocess.run(['Rscript', app.config['SSLASSO_SCRIPT'], job_dir, x_filename, y_filename, jobcategory,
-                                params['fold_number'], params['seed_number']],
+                subprocess.run(['Rscript', app.config['SSLASSO_SCRIPT'], job_dir, x_filename, y_filename,
+                                params['datatype'], params['fold_number'], params['seed_number']],
                                stdout=SSLASSO_stdout, stderr=SSLASSO_stderr)
                 job.status = 'Done'
-        except:
+        except Exception as ex:
+            print(ex)
             job.status = 'Error'
 
     # check results
@@ -79,4 +83,9 @@ def call_scripts(jobid, method, params=None, x_filename='', y_filename='', jobca
     job.running_time = str(datetime.now(timezone.utc).replace(tzinfo=None) - job.timestamp)[:-7]
     db.session.add(job)
     db.session.commit()
+
+    # if job.status == 'Done':
+    #     send_job_done_email.apply_async(recipients=[job.user_email], jobname=job.name, jobid=job.id,
+    #                                     security_code=job.security_code)
+
     print('Background Done!')
