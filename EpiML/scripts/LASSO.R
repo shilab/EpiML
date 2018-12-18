@@ -16,9 +16,12 @@ quantile_normalisation <- function(df){
   return(df_final)
 }
 
-workspace <- '~/Desktop/samples/'
-x_filename <- 'yeast_Geno.txt'
-y_filename <- 'yeast_Pheno.txt'
+# workspace <- '~/Desktop/samples/'
+# x_filename <- 'yeast_Geno.txt'
+# y_filename <- 'yeast_Pheno.txt'
+workspace <- '~/Experiment/dataset/full_yeast dataset/'
+x_filename <- 'geno_150_150_.txt'
+y_filename <- 'pheno_150_150_.txt'
 datatype <- 'discrete'  # discrete or continuous
 nFolds <- 5
 # max_percentages_miss_val <- 0.2
@@ -60,7 +63,7 @@ y <- read.table(
 sprintf('y size: (%d, %d)', nrow(y), ncol(y))
 y <- as.matrix(y)
 
-# preprocessing for different job categories
+cat('preprocessing depending on data type','\n')
 x_preprocessed <- NULL
 y_preprocessed <- NULL
 # for x preprocess
@@ -75,7 +78,6 @@ if (datatype == 'discrete') {
 }
 # for y preprocess
 y_preprocessed <- scale(y)
-rm(x, y, x_filtered)
 
 cat('Main effect estimated', '\n')
 cv_main = cv.glmnet(x_preprocessed, y_preprocessed, nfolds=nFolds)
@@ -87,8 +89,8 @@ blup_main = glmnet(
   lambda = cv_main$lambda.min,
   intercept = TRUE
 )
-main = as.matrix(blup_main$beta)
-sig_main = main[which(main != 0), 1, drop = F]
+main <- as.matrix(blup_main$beta)
+sig_main <- main[which(main != 0), 1, drop = F]
 
 cat('Subtract the main effect', '\n')
 index_main <- rownames(sig_main)
@@ -113,8 +115,8 @@ if (datatype == 'continuous') {
   epi_matrix <- quantile_normalisation(epi_matrix)
 }
 # regression using lasso
-cv_epi = cv.glmnet(epi_matrix, subtracted_y, nfolds=nFolds);
-blup_epi = glmnet(
+cv_epi <- cv.glmnet(epi_matrix, subtracted_y, nfolds=nFolds);
+blup_epi <- glmnet(
   epi_matrix,
   subtracted_y,
   alpha = 1,
@@ -122,42 +124,54 @@ blup_epi = glmnet(
   lambda = cv_epi$lambda.min,
   intercept = TRUE
 )
-epi = as.matrix(blup_epi$beta)
-sig_epi = epi[which(epi != 0), 1, drop = F]
+epi <- as.matrix(blup_epi$beta)
+sig_epi <- epi[which(epi != 0), 1, drop = F]
 
 cat('Final run', '\n')
 # construct new matrix from significant main and epistatic variants
-full_matrix <- cbind(x_preprocessed[, rownames(sig_main)],epi_matrix[,rownames(sig_epi)])
-if (datatype == 'continuous') {
-  full_matrix <- quantile_normalisation(full_matrix)
-}
-# regression 
-cv_full = cv.glmnet(full_matrix, y_preprocessed, nfolds=nFolds)
-blup_full = glmnet(
-  full_matrix,
-  y_preprocessed,
-  alpha = 1,
-  family = c("gaussian"),
-  lambda = cv_full$lambda.min,
-  intercept = TRUE
-)
-full = as.matrix(blup_full$beta)
-sig_full = full[which(full != 0), 1, drop = F]
+full_matrix <- cbind(x_preprocessed[, rownames(sig_main), drop=F],epi_matrix[,rownames(sig_epi), drop=F])
 
-cat('Generate result tables', '\n')
-# for main effect
-main_index <- setdiff(1:nrow(sig_full), grep("\\*", rownames(sig_full)))
-output_main <- matrix("NA", length(main_index), 2)
-output_main[, 1] <- matrix(rownames(sig_full), ncol = 1)[main_index, , drop = F]
-output_main[, 2] <- sig_full[main_index, 1, drop = F]
+output_main <- matrix("NA", 0, 2)
 colnames(output_main) <- c("feature", "coefficent")
-# for epistasic effect
-epi_index <- grep("\\*", rownames(sig_full))
-output_epi <- matrix("NA", length(epi_index), 3)
-epi_ID <- matrix(rownames(sig_full), ncol = 1)[epi_index, , drop = F]
-output_epi[, 1:2] <- matrix(unlist(strsplit(epi_ID, "\\*")), ncol = 2)
-output_epi[, 3] <- sig_full[epi_index, 1, drop = F]
+output_epi <- matrix("NA", 0, 3)
 colnames(output_epi) <- c("feature1", "feature2", "coefficent")
+# at least two columns
+if (!is.null(full_matrix) && ncol(full_matrix)>2){
+  if (datatype == 'continuous') {
+    full_matrix <- quantile_normalisation(full_matrix)
+  }
+  # regression 
+  cv_full = cv.glmnet(full_matrix, y_preprocessed, nfolds=nFolds)
+  blup_full = glmnet(
+    full_matrix,
+    y_preprocessed,
+    alpha = 1,
+    family = c("gaussian"),
+    lambda = cv_full$lambda.min,
+    intercept = TRUE
+  )
+  full = as.matrix(blup_full$beta)
+  sig_full = full[which(full != 0), 1, drop = F]
+  
+  cat('Generate result tables', '\n')
+  # for main effect
+  main_index <- setdiff(1:nrow(sig_full), grep("\\*", rownames(sig_full)))
+  if(length(main_index)!=0){
+    output_main <- matrix("NA", length(main_index), 2)
+    output_main[, 1] <- matrix(rownames(sig_full), ncol = 1)[main_index, , drop = F]
+    output_main[, 2] <- sig_full[main_index, 1, drop = F]
+    colnames(output_main) <- c("feature", "coefficent")
+  }
+  # for epistasic effect
+  epi_index <- grep("\\*", rownames(sig_full))
+  if(length(epi_index)!=0){
+    output_epi <- matrix("NA", length(epi_index), 3)
+    epi_ID <- matrix(rownames(sig_full), ncol = 1)[epi_index, , drop = F]
+    output_epi[, 1:2] <- matrix(unlist(strsplit(epi_ID, "\\*")), ncol = 2, byrow=T)
+    output_epi[, 3] <- sig_full[epi_index, 1, drop = F]
+    colnames(output_epi) <- c("feature1", "feature2", "coefficent")
+  }
+}
 
 ## Ouput the final result including main and epistatic effect
 write.table(
