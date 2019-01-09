@@ -72,14 +72,12 @@
     <div>
         <h2>Server</h2>
         <div>
-            <p>Separately upload feature matrix X and label matrix Y, and submit job in this page. A
-                step-by-step tutorial can be found in <a href="{{ url_for('help') }}"> Help</a>. When you submit the
-                job, it will be run in background. If you provide an Email address, an Email notification with result
-                link will be sent to you. You can check the running status and get final report by the link.
-
-                <!--When job is
-                done, you will receive another Email
-                notification.-->
+            <p>EpiML takes feature matrix X and label matrix Y as input. Both of them are tab-delimited tables. A
+                step-by-step tutorial can be found in <a href="{{ url_for('help') }}"> Help</a>. Once job is
+                submitted, it will be run in background. If an Email address is provided, an Email notification with
+                processing link will be sent to you. You can check job running status and retrieve final results by the
+                link.
+                When job is done, you will receive another Email notification.
             </p>
         </div>
         <hr>
@@ -117,11 +115,11 @@
                     <label class="control-label col-sm-2 " for="jobcategory">Job Category <span
                             style="color: red">*</span>:
                         <div class="question_tooltip"><span class="glyphicon glyphicon-question-sign"></span>
-                            <span class="tooltiptext">Refer to what kind of job. For Gene and microRNA job, external resources will be integrated in result visualization.</span>
+                            <span class="tooltiptext">Refer to what kind of job. For Gene and microRNA category, links to meta-data and database will be integrated in result visualization.</span>
                         </div>
                     </label>
                     <div class="col-sm-10">
-                        <label class="radio-inline col-sm-3">
+                        <label class="radio-inline col-sm-4">
                             <input id="jobcategory" name="jobcategory" type="radio" value="Gene" CHECKED> Gene
                             <select name="species" id="species">
                                 <option value="Human">Human</option>
@@ -204,8 +202,8 @@
                         </div>
                     </label>
 
-                    <div class="row" style="padding: 15px">
-                        <div class=" col-sm-2">
+                    <div class="row col-sm-10" style="padding: 15px">
+                        <div class=" col-sm-3">
                             <input type="radio" id="LASSO" name="method" value="LASSO" checked>
                             <label for="LASSO">LASSO
                                 <div class="question_tooltip"><span class="glyphicon glyphicon-question-sign"></span>
@@ -213,7 +211,7 @@
                                 </div>
                             </label>
                         </div>
-                        <div class=" col-sm-2">
+                        <div class=" col-sm-3">
                             <input type="radio" id="ssLASSO" name="method" value="ssLASSO">
                             <label for="ssLASSO">ssLASSO
                                 <div class="question_tooltip"><span class="glyphicon glyphicon-question-sign"></span>
@@ -221,7 +219,7 @@
                                 </div>
                             </label>
                         </div>
-                        <div class=" col-sm-2">
+                        <div class=" col-sm-3">
                             <input type="radio" id="EBEN" name="method" value="EBEN">
                             <label for="EBEN">EBEN
                                 <div class="question_tooltip"><span class="glyphicon glyphicon-question-sign"></span>
